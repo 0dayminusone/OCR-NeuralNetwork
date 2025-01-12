@@ -131,7 +131,7 @@ services:
     ports:
       - 3003:3003
     volumes:
-      - ../machine-learning:/usr/src/app
+      - ../machine-learning/immich_machinelearning:/usr/src/immich_machinelearning
       - model-cache:/cache
     env_file:
       - .env
