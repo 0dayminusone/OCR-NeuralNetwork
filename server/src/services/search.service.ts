@@ -7,6 +7,7 @@ import {
   LargeAssetSearchDto,
   mapPlaces,
   MetadataSearchDto,
+  OcrSearchDto,
   PlacesResponseDto,
   RandomSearchDto,
   SearchPeopleDto,
@@ -22,7 +23,7 @@ import { AssetOrder, AssetVisibility, Permission } from 'src/enum';
 import { BaseService } from 'src/services/base.service';
 import { requireElevatedPermission } from 'src/utils/access';
 import { getMyPartnerIds } from 'src/utils/asset.util';
-import { isSmartSearchEnabled } from 'src/utils/misc';
+import { isSmartSearchEnabled, isOcrEnabled } from 'src/utils/misc';
 
 @Injectable()
 export class SearchService extends BaseService {
@@ -143,6 +144,25 @@ export class SearchService extends BaseService {
     );
 
     return this.mapResponse(items, hasNextPage ? (page + 1).toString() : null, { auth });
+  }
+
+  async searchOcr(auth: AuthDto, searchRequest: OcrSearchDto): Promise<SearchResponseDto> {
+    const { machineLearning: mlSettings } = await this.getConfig({ withCache: false });
+    
+    if (!isOcrEnabled(mlSettings)) {
+      throw new BadRequestException('OCR functionality is not enabled');
+    }
+
+    const authorizedUserIds = await this.getUserIdsToSearch(auth);
+    const currentPage = searchRequest.page ?? 1;
+    const pageLimit = searchRequest.size || 250;
+    
+    const { items: searchResults, hasNextPage: moreResultsAvailable } = await this.searchRepository.searchOcr(
+      { page: currentPage, size: pageLimit },
+      { ...searchRequest, userIds: authorizedUserIds },
+    );
+
+    return this.mapResponse(searchResults, moreResultsAvailable ? (currentPage + 1).toString() : null, { auth });
   }
 
   async getAssetsByCity(auth: AuthDto): Promise<AssetResponseDto[]> {

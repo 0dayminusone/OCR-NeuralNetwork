@@ -84,6 +84,11 @@ export interface SearchEmbeddingOptions {
   userIds: string[];
 }
 
+export interface SearchOcrOptions {
+  ocr: string;
+  userIds: string[];
+}
+
 export interface SearchPeopleOptions {
   personIds?: string[];
 }
@@ -128,6 +133,8 @@ export type SmartSearchOptions = SearchDateOptions &
   SearchUserIdOptions &
   SearchPeopleOptions &
   SearchTagOptions;
+
+export type OcrSearchOptions = SearchDateOptions & SearchOcrOptions;
 
 export type LargeAssetSearchOptions = AssetSearchOptions & { minFileSize?: number };
 
@@ -298,6 +305,39 @@ export class SearchRepository {
   })
   async getEmbedding(assetId: string) {
     return this.db.selectFrom('smart_search').selectAll().where('assetId', '=', assetId).executeTakeFirst();
+  }
+
+  @GenerateSql({
+    params: [
+      { page: 1, size: 100 },
+      {
+        userIds: [DummyValue.UUID],
+        ocr: DummyValue.STRING,
+      },
+    ],
+  })
+  async searchOcr(paginationParams: SearchPaginationOptions, searchCriteria: OcrSearchOptions) {
+    if (!isValidInteger(paginationParams.size, { min: 1, max: 1000 })) {
+      throw new Error(`Invalid size parameter: ${paginationParams.size}`);
+    }
+
+    const queryResults = await this.db
+      .selectFrom('asset_ocr')
+      .selectAll()
+      .innerJoin('assets', 'assets.id', 'asset_ocr.assetId')
+      .where('assets.ownerId', '=', anyUuid(searchCriteria.userIds))
+      .where('asset_ocr.text', 'ilike', `%${searchCriteria.ocr}%`)
+      .limit(paginationParams.size + 1)
+      .offset((paginationParams.page - 1) * paginationParams.size)
+      .execute() as any;
+
+    const moreResultsExist = queryResults.length > paginationParams.size;
+    queryResults.splice(paginationParams.size);
+    
+    return { 
+      items: queryResults, 
+      hasNextPage: moreResultsExist 
+    };
   }
 
   @GenerateSql({

@@ -8,7 +8,7 @@
   import { handlePromiseError } from '$lib/utils';
   import { generateId } from '$lib/utils/generate-id';
   import { getMetadataSearchQuery } from '$lib/utils/metadata-search';
-  import type { MetadataSearchDto, SmartSearchDto } from '@immich/sdk';
+  import type { MetadataSearchDto, OcrSearchDto, SmartSearchDto } from '@immich/sdk';
   import { IconButton, modalManager } from '@immich/ui';
   import { mdiClose, mdiMagnify, mdiTune } from '@mdi/js';
   import { onDestroy, tick } from 'svelte';
@@ -18,7 +18,7 @@
   interface Props {
     value?: string;
     grayTheme: boolean;
-    searchQuery?: MetadataSearchDto | SmartSearchDto;
+    searchQuery?: MetadataSearchDto | SmartSearchDto | OcrSearchDto;
   }
 
   let { value = $bindable(''), grayTheme, searchQuery = {} }: Props = $props();
@@ -39,7 +39,7 @@
     searchStore.isSearchEnabled = false;
   });
 
-  const handleSearch = async (payload: SmartSearchDto | MetadataSearchDto) => {
+  const handleSearch = async (payload: SmartSearchDto | MetadataSearchDto | OcrSearchDto) => {
     const params = getMetadataSearchQuery(payload);
 
     closeDropdown();
@@ -105,26 +105,33 @@
     await handleSearch(searchResult);
   };
 
-  const onSubmit = () => {
-    const searchType = getSearchType();
-    let payload: SmartSearchDto | MetadataSearchDto = {} as SmartSearchDto | MetadataSearchDto;
+  const performSearch = () => {
+    const selectedSearchType = getSearchType();
+    let searchPayload: SmartSearchDto | MetadataSearchDto | OcrSearchDto = {} as
+      | SmartSearchDto
+      | MetadataSearchDto
+      | OcrSearchDto;
 
-    switch (searchType) {
+    switch (selectedSearchType) {
       case 'smart': {
-        payload = { query: value } as SmartSearchDto;
+        searchPayload = { query: value } as SmartSearchDto;
         break;
       }
       case 'metadata': {
-        payload = { originalFileName: value } as MetadataSearchDto;
+        searchPayload = { originalFileName: value } as MetadataSearchDto;
         break;
       }
       case 'description': {
-        payload = { description: value } as MetadataSearchDto;
+        searchPayload = { description: value } as MetadataSearchDto;
+        break;
+      }
+      case 'ocr': {
+        searchPayload = { ocr: value } as OcrSearchDto;
         break;
       }
     }
 
-    handlePromiseError(handleSearch(payload));
+    handlePromiseError(handleSearch(searchPayload));
     saveSearchTerm(value);
   };
 
@@ -168,10 +175,10 @@
 
   const onsubmit = (event: Event) => {
     event.preventDefault();
-    onSubmit();
+    performSearch();
   };
 
-  function getSearchType(): 'smart' | 'metadata' | 'description' {
+  function getSearchType(): 'smart' | 'metadata' | 'description' | 'ocr' {
     const searchType = localStorage.getItem('searchQueryType');
     switch (searchType) {
       case 'smart': {
@@ -182,6 +189,9 @@
       }
       case 'description': {
         return 'description';
+      }
+      case 'ocr': {
+        return 'ocr';
       }
       default: {
         return 'smart';
@@ -200,6 +210,9 @@
       }
       case 'description': {
         return $t('description');
+      }
+      case 'ocr': {
+        return $t('ocr');
       }
     }
   }
