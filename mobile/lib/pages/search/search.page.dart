@@ -32,9 +32,9 @@ class SearchPage extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final textSearchType = useState<TextSearchType>(TextSearchType.context);
-    final searchHintText = useState<String>('sunrise_on_the_beach'.tr());
-    final textSearchController = useTextEditingController();
+    final selectedSearchMode = useState<TextSearchType>(TextSearchType.context);
+    final placeholderText = useState<String>('sunrise_on_the_beach'.tr());
+    final searchInputController = useTextEditingController();
     final filter = useState<SearchFilter>(
       SearchFilter(
         people: prefilter?.people ?? {},
@@ -387,7 +387,7 @@ class SearchPage extends HookConsumerWidget {
     }
 
     handleTextSubmitted(String value) {
-      switch (textSearchType.value) {
+      switch (selectedSearchMode.value) {
         case TextSearchType.context:
           filter.value = filter.value.copyWith(filename: '', context: value, description: '');
 
@@ -399,15 +399,24 @@ class SearchPage extends HookConsumerWidget {
         case TextSearchType.description:
           filter.value = filter.value.copyWith(filename: '', context: '', description: value);
           break;
+        case TextSearchType.ocrText:
+          filter.value = filter.value.copyWith(
+            filename: '',
+            context: '',
+            description: '',
+            ocrText: value,
+          );
+          break;
       }
 
       search();
     }
 
-    IconData getSearchPrefixIcon() => switch (textSearchType.value) {
+    IconData getSearchPrefixIcon() => switch (selectedSearchMode.value) {
       TextSearchType.context => Icons.image_search_rounded,
       TextSearchType.filename => Icons.abc_rounded,
       TextSearchType.description => Icons.text_snippet_outlined,
+      TextSearchType.ocrText => Icons.document_scanner_outlined
     };
 
     return Scaffold(
@@ -446,15 +455,15 @@ class SearchPage extends HookConsumerWidget {
                       'search_by_context'.tr(),
                       style: context.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w500,
-                        color: textSearchType.value == TextSearchType.context ? context.colorScheme.primary : null,
+                        color: selectedSearchMode.value == TextSearchType.context ? context.colorScheme.primary : null,
                       ),
                     ),
                     selectedColor: context.colorScheme.primary,
-                    selected: textSearchType.value == TextSearchType.context,
+                    selected: selectedSearchMode.value == TextSearchType.context,
                   ),
                   onPressed: () {
-                    textSearchType.value = TextSearchType.context;
-                    searchHintText.value = 'sunrise_on_the_beach'.tr();
+                    selectedSearchMode.value = TextSearchType.context;
+                    placeholderText.value = 'sunrise_on_the_beach'.tr();
                   },
                 ),
                 MenuItemButton(
@@ -464,15 +473,15 @@ class SearchPage extends HookConsumerWidget {
                       'search_filter_filename'.tr(),
                       style: context.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w500,
-                        color: textSearchType.value == TextSearchType.filename ? context.colorScheme.primary : null,
+                        color: selectedSearchMode.value == TextSearchType.filename ? context.colorScheme.primary : null,
                       ),
                     ),
                     selectedColor: context.colorScheme.primary,
-                    selected: textSearchType.value == TextSearchType.filename,
+                    selected: selectedSearchMode.value == TextSearchType.filename,
                   ),
                   onPressed: () {
-                    textSearchType.value = TextSearchType.filename;
-                    searchHintText.value = 'file_name_or_extension'.tr();
+                    selectedSearchMode.value = TextSearchType.filename;
+                    placeholderText.value = 'file_name_or_extension'.tr();
                   },
                 ),
                 MenuItemButton(
@@ -482,15 +491,35 @@ class SearchPage extends HookConsumerWidget {
                       'search_by_description'.tr(),
                       style: context.textTheme.bodyLarge?.copyWith(
                         fontWeight: FontWeight.w500,
-                        color: textSearchType.value == TextSearchType.description ? context.colorScheme.primary : null,
+                        color: selectedSearchMode.value == TextSearchType.description ? context.colorScheme.primary : null,
                       ),
                     ),
                     selectedColor: context.colorScheme.primary,
-                    selected: textSearchType.value == TextSearchType.description,
+                    selected: selectedSearchMode.value == TextSearchType.description,
                   ),
                   onPressed: () {
-                    textSearchType.value = TextSearchType.description;
-                    searchHintText.value = 'search_by_description_example'.tr();
+                    selectedSearchMode.value = TextSearchType.description;
+                    placeholderText.value = 'search_by_description_example'.tr();
+                  },
+                ),
+                MenuItemButton(
+                  child: ListTile(
+                    leading: const Icon(Icons.document_scanner_outlined),
+                    title: Text(
+                      'search_filter_ocr'.tr(),
+                      style: context.textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: selectedSearchMode.value == TextSearchType.ocrText
+                            ? context.colorScheme.primary
+                            : null,
+                      ),
+                    ),
+                    selectedColor: context.colorScheme.primary,
+                    selected: selectedSearchMode.value == TextSearchType.ocrText,
+                  ),
+                  onPressed: () {
+                    selectedSearchMode.value = TextSearchType.ocrText;
+                    placeholderText.value = 'search_by_ocr_example'.tr();
                   },
                 ),
               ],
@@ -512,9 +541,9 @@ class SearchPage extends HookConsumerWidget {
             ),
           ),
           child: SearchField(
-            hintText: searchHintText.value,
+            hintText: placeholderText.value,
             key: const Key('search_text_field'),
-            controller: textSearchController,
+            controller: searchInputController,
             contentPadding: prefilter != null ? const EdgeInsets.only(left: 24) : const EdgeInsets.all(8),
             prefixIcon: prefilter != null ? null : Icon(getSearchPrefixIcon(), color: context.colorScheme.primary),
             onSubmitted: handleTextSubmitted,
