@@ -10,6 +10,7 @@ docker/upload
 docker/library
 uploads
 coverage
+tests.sh
 
 mobile/gradle.properties
 mobile/openapi/pubspec.lock
